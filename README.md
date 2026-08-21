@@ -200,8 +200,22 @@ scored the same reply as fully sufficient. That disagreement is the actual
 value of running both; a spike that only tested one provider wouldn't have
 surfaced it.
 
-**Not yet tested:** the microphone-based path end to end — recording
-capture, upload, and scoring on real audio rather than the typed fallback.
-Everything above used the text-input fallback specifically so the scoring
-prompt and provider comparison could be verified independently of
-Deepgram/MediaRecorder browser behavior.
+**Microphone path — tested on a real device, working.** A real recording
+(77 KB, mobile Safari) of a deliberately bad reply — declining to help and
+pointing the guest to a competitor hotel — scored `Poor`/40 on both
+providers, with each citing the actual moment and explaining what was wrong.
+Confirms both the recording pipeline and that a genuinely poor reply is
+recognized as such, not just a good one.
+
+| Provider | Band | Emotion | Upload | Model response | Total round trip |
+| --- | --- | --- | --- | --- | --- |
+| Qwen | Poor | 40 | 280 ms | 3.28 s | 3.56 s |
+| Gemini | Poor | 40 | 370 ms | 14.65 s | 15.02 s |
+
+Guest line to scored feedback (TTS + slowest provider): 18.05 s.
+
+Worth flagging: Gemini took roughly 3× longer scoring real audio (14.65 s)
+than it did on typed text earlier in testing (~5 s on a similar-length
+reply). Qwen's audio and text timings stayed close (3.28 s vs ~2.7 s). If
+Gemini stays in the mix for a 5-guest simulation, its audio-scoring latency
+is the number to budget against, not its text latency.
