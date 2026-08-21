@@ -175,18 +175,33 @@ Tested live against the deployed Vercel environment on 2026-08-21, hitting
   correct JSON shape, sensible `Best` band with an accurately cited moment
   and a specific, non-generic improvement note. No free-tier limit hit.
 
-**Qwen scoring — blocked on the key, not the code.**
-- Every attempt returns HTTP 401 from Alibaba Cloud Model Studio:
-  `"Incorrect API key provided."` This is the exact failure mode the spike
-  is meant to surface — no fallback, no mock score, the provider name and
-  reason shown on screen. The `DASHSCOPE_API_KEY` value in Vercel needs to
-  be regenerated or re-checked against the Model Studio console
-  (international endpoint, `https://dashscope-intl.aliyuncs.com`) before
-  the Qwen side of the comparison can be judged.
-- Not yet reached: whether Qwen's free tier is sufficient for a 5-guest
-  simulation, since no request has authenticated yet.
+**Qwen scoring — working, after the key was fixed.**
+- First run failed: HTTP 401 from Alibaba Cloud Model Studio, `"Incorrect
+  API key provided."` The original `DASHSCOPE_API_KEY` value was invalid —
+  a key problem, not a code problem, and the no-fallback design surfaced it
+  correctly (provider name and reason shown on screen, nothing faked).
+- After the key was replaced: HTTP 200 in ~2.3–2.7 s model time, correct
+  JSON shape, `qwen3-omni-flash` as the responding model. No free-tier
+  limit hit yet.
 
-**Not yet tested:** the microphone-based path end to end (recording capture,
-upload, and scoring on real audio rather than the typed fallback), and the
-two-provider side-by-side comparison on `/roleplay-spike` with a working
-Qwen key.
+**Both providers compared side by side, same input.** The same typed reply
+("Good afternoon, of course. May I take your name so I can check what we
+have free for two nights?") sent to both providers in the same request,
+mirroring what the `/roleplay-spike` toggle does with one recording:
+
+| Provider | Band | Emotion | Model time |
+| --- | --- | --- | --- |
+| Qwen (`qwen3-omni-flash`) | Good | 80 | ~2.7 s |
+| Gemini (`gemini-3.6-flash`) | Best | 100 | ~4.3 s |
+
+Same cited moment, different bands and different reasoning — Qwen flagged
+that guest count and stay length weren't explicitly confirmed back, Gemini
+scored the same reply as fully sufficient. That disagreement is the actual
+value of running both; a spike that only tested one provider wouldn't have
+surfaced it.
+
+**Not yet tested:** the microphone-based path end to end — recording
+capture, upload, and scoring on real audio rather than the typed fallback.
+Everything above used the text-input fallback specifically so the scoring
+prompt and provider comparison could be verified independently of
+Deepgram/MediaRecorder browser behavior.
