@@ -38,7 +38,7 @@ fetch carries one. The client sends at most a provider *name* (`qwen` or
 | `QWEN_MODEL` | `lib/scoring/qwen.ts` | No, defaults to `qwen3-omni-flash` |
 | `QWEN_BASE_URL` | `lib/scoring/qwen.ts` | No, defaults to the international endpoint |
 | `GEMINI_API_KEY` | `lib/scoring/gemini.ts` | Yes, to use Gemini |
-| `GEMINI_MODEL` | `lib/scoring/gemini.ts` | No, defaults to `gemini-2.5-flash` |
+| `GEMINI_MODEL` | `lib/scoring/gemini.ts` | No, defaults to `gemini-3.6-flash` |
 
 `.env.example` lists every one of these with blank values. Real values go in
 Vercel project environment variables and in a gitignored `.env.local` for local

@@ -11,7 +11,7 @@ import {
   type ScoringProvider,
 } from '@/lib/scoring/types';
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.6-flash';
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
 /** Google AI Studio, native audio input. */
