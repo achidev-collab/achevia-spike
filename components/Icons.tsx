@@ -140,3 +140,23 @@ export function LevelsIcon(props: IconProps) {
     </Stroked>
   );
 }
+
+/** Hint bar lightbulb — 16b / 17b. */
+export function HintIcon(props: IconProps) {
+  return (
+    <Stroked strokeWidth={1.9} {...props}>
+      <path d="M9.4 18.4h5.2" />
+      <path d="M10.2 21h3.6" />
+      <path d="M8.2 14.4a5.2 5.2 0 1 1 7.6 0c-.8.8-1.2 1.6-1.3 2.6H9.5c-.1-1-.5-1.8-1.3-2.6z" />
+    </Stroked>
+  );
+}
+
+/** Chevron on the "Open the tip" pill — 16b. */
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <Stroked strokeWidth={2.2} {...props}>
+      <path d="M6 9.5l6 6 6-6" />
+    </Stroked>
+  );
+}
