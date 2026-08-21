@@ -14,7 +14,13 @@ export const maxDuration = 60;
  * reached the client somehow.
  */
 
-const DEFAULT_FR_VOICE = 'aura-2-pandora-en';
+/**
+ * Deepgram sells exactly two French Aura-2 voices to this project:
+ * aura-2-agathe-fr (female) and aura-2-hector-fr (male). Confirmed against
+ * GET /v1/models — see /api/live/voices. Any other -fr name answers 403
+ * ("project does not have access"), not 404, so the name cannot be guessed.
+ */
+const DEFAULT_FR_VOICE = 'aura-2-agathe-fr';
 const VOICE_PATTERN = /^[a-z0-9-]{1,64}$/;
 const MAX_TEXT_LENGTH = 600;
 
