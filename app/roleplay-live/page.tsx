@@ -263,9 +263,11 @@ export default function RoleplayLivePage() {
       const payload = await response.json().catch(() => null);
 
       if (!response.ok || !payload?.outcome) {
-        const message =
+        const base =
           (payload?.error as string) ??
           `La notation a échoué (HTTP ${response.status}).`;
+        const structural = payload?.structuralLimit as string | undefined;
+        const message = structural ? `${base}\n\n${structural}` : base;
         setError({ provider: payload?.providerLabel as string, message });
         setPhase('done');
         finishRun(null, '', 0, message);

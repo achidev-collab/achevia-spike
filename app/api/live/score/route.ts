@@ -100,6 +100,9 @@ export async function POST(request: Request) {
           provider: cause.provider,
           providerLabel: llm.label,
           error: `${llm.label} could not score this exchange: ${cause.reason}`,
+          structuralLimit: isMultiAudioRefusal(cause.reason)
+            ? `${llm.label} refuses more than one audio input in a single request. End-of-exchange scoring is defined as sending every turn's audio at once, so this model cannot perform this job at all. This is a limitation of the model, not a transient error, and it will not pass on a retry. No partial or single-turn score is produced in its place, because scoring a subset would silently answer a different question.`
+            : undefined,
         },
         { status: cause.status && cause.status >= 400 ? cause.status : 502 },
       );
@@ -213,4 +216,13 @@ function parseStrict(raw: string): LiveScoreOutcome {
 
 function asString(value: FormDataEntryValue | null): string | null {
   return typeof value === 'string' ? value : null;
+}
+
+/**
+ * Qwen's omni model rejects a request carrying more than one audio part.
+ * Detected so the screen can explain that this is structural rather than
+ * letting it read as a random HTTP 400.
+ */
+function isMultiAudioRefusal(reason: string): boolean {
+  return /multiple inputs of the same modality|mixed modality inputs/i.test(reason);
 }

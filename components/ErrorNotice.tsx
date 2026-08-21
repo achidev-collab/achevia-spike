@@ -37,6 +37,7 @@ export function ErrorNotice({
           style={{
             font: `400 14px/1.5 ${font.body}`,
             color: ink.criticalText,
+            whiteSpace: 'pre-wrap',
           }}
         >
           {message}

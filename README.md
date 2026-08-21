@@ -1,16 +1,19 @@
 # Achevia API spike
 
-A technical spike, not a product. Two screens that prove two API pipelines work
-end to end with real calls, and put the round-trip latency on screen so the
-timed five-guest simulation can be judged as viable or not.
+A technical spike, not a product. It proves the API pipelines work end to end
+with real calls, puts round-trip latency on screen, and tests whether an AI
+guest can improvise inside a fixed syllabus.
 
 There is no navigation, no auth, no dashboard and no other pathway screen. The
 root path is deliberately not built. Go straight to:
 
-- `/roleplay-spike`
-- `/pms-spike`
-- `/roleplay-multiturn-spike` — a follow-on timing rig, see
+- `/roleplay-spike` — single exchange, English, mic and typed fallback
+- `/pms-spike` — spoken PMS field entry, English
+- `/roleplay-multiturn-spike` — follow-on timing rig, see
   [below](#multi-turn-timing-spike-roleplay-multiturn-spike)
+- `/roleplay-live` — multi-turn off-script **French** roleplay with a
+  containment check, see
+  [below](#live-off-script-french-roleplay-roleplay-live)
 
 ## Which calls hit what
 
@@ -283,3 +286,137 @@ Not yet tested: the same sequence with real recorded audio for all three
 turns (this run used the typed fallback throughout), and the true
 branch-classification variant, which adds one model call per turn and would
 change this math.
+
+## Live off-script French roleplay (`/roleplay-live`)
+
+A third screen, and a different question from the first two. Those asked
+whether the API plumbing works. This one asks whether an AI guest can
+**improvise inside a syllabus** — vary phrasing, order and emotion freely
+while never introducing vocabulary, procedures, facts or task types the
+chapter has not taught. Ingredients locked, recipe free.
+
+One guest, five turns maximum, all in French. The guest's line is generated
+each turn rather than scripted, spoken by a French Deepgram voice, and the
+student answers by voice. Generation only between turns; scoring runs once
+at the end on all five audio clips. The hint box is collapsed by default and
+holds one Communication tip.
+
+> Placeholder content. The manifest in `lib/live/manifest.ts` is written
+> against the Content Framework's Chapter 1 scope, not the authored chapter
+> manifest. Do not treat it as canonical.
+
+### The containment check
+
+Every generated line passes two gates before it can be shown or spoken:
+
+1. **Lexical.** A deny-list over the explicitly out-of-syllabus list, plus an
+   English-marker check. Pure and total — it cannot fail, time out, or cost a
+   call, so a banned topic can never slip through because a check errored.
+2. **Semantic.** The same provider is asked whether the line stays inside the
+   manifest, answering `CONFORME` or `HORS-SUJET: <raison>` in **plain text,
+   deliberately not JSON** — so a model that is bad at JSON cannot break the
+   containment check itself.
+
+A rejected line is never displayed or spoken. It is logged in full with turn
+number, attempt, reason, which gate caught it and the exact matched token,
+then regenerated, up to three attempts before the turn fails outright. The
+counter is on screen throughout and the full log is on the results screen.
+`/api/live/tts` re-runs the lexical gate before speaking, **ahead of even
+reading the API key**, so a banned line cannot be spoken even if it reached
+the client another way.
+
+**Gate verified directly:** 5/5 in-syllabus French lines pass; 10/10
+out-of-syllabus lines are blocked with the correct category and matched
+token — `prix`, `carte bancaire`, `surclassement`, `chien`, `annuler`,
+`passeport`, `restaurant`, `inacceptable`, `euros`, and an English line
+caught on `you`.
+
+### What the containment check caught, per provider
+
+**Zero rejections on both providers, across eight generated turns.** Neither
+model tried to introduce a price, an upgrade, a pet, a cancellation or a
+passport unprompted. On the narrow question the check was built to answer —
+does the guest wander out of the syllabus — both models held.
+
+That result is only meaningful next to what the check does *not* measure,
+because the same runs surfaced three quality failures that stayed
+technically inside the manifest:
+
+| Finding | Provider | What happened |
+| --- | --- | --- |
+| Emoji in generated speech | Gemini | Produced `« une chambre simple pour deux 💬 nuits »`. In syllabus, and about to be sent to a TTS engine. Neither gate looks for emoji. |
+| Verbatim repetition | Qwen | Turns 3, 4 and 5 came back as the *same sentence*, word for word. It stayed in syllabus by ceasing to improvise at all. |
+| Role confusion | Qwen | The guest began speaking as the receptionist — `« Bon séjour, je reste à votre disposition »` is staff phrasing from the manifest's own closing vocabulary, said by the customer. |
+
+The honest read: a containment check scoped to *topic* passes a line that is
+repetitive, mis-attributed, or carrying an emoji into a speech synthesiser.
+Topic containment is necessary and is not sufficient.
+
+### Provider comparison
+
+| | Qwen (`qwen3-omni-flash`) | Gemini (`gemini-3.6-flash`) |
+| --- | --- | --- |
+| Guest line generation | ~1.0–1.5 s | ~3.2–17.6 s |
+| Semantic containment check | ~0.4–0.9 s | ~2.3–12.1 s |
+| Mood-trigger intent check | ~1.4 s | ~2.4 s |
+| Completed 5 turns | Yes | **No — quota exhausted at turn 3** |
+| End-of-exchange scoring | **No — structurally impossible** | Yes, 22.8 s |
+| French quality | Natural at first, then repeats verbatim | Natural throughout, one emoji artifact |
+
+**Two blocking findings, one per provider.**
+
+**Qwen cannot do end-of-exchange scoring at all.** Sending all five turns'
+audio in one request returns `HTTP 400 InternalError.Algo.InvalidParameter:
+Multiple inputs of the same modality or mixed modality inputs are currently
+not applicable to the omni model.` End-of-exchange scoring is *defined* as
+sending every turn's audio at once, so this is not a transient error and
+will not pass on a retry. Nothing is faked in its place and no single-turn
+subset is scored instead — scoring part of the exchange would silently
+answer a different question. The screen names the limitation explicitly.
+Note also that a true Omni-**Realtime** variant would need Alibaba's
+WebSocket realtime API, not the `chat/completions` endpoint used here; the
+non-realtime omni model is what actually works for per-turn generation.
+
+**Gemini runs out of free tier fast.** It hit `HTTP 429 — You exceeded your
+current quota` at turn 3 of the first full exchange. Each turn costs up to
+four model calls (intent check, generation, containment check, plus a retry
+if containment rejects), so a five-turn exchange is ~15–20 calls before
+scoring. On the free tier that is roughly one and a half exchanges.
+
+Gemini's scoring itself was strong when it ran: valid JSON first time, all
+five criteria in French, and cited moments that genuinely quoted the
+student — `« Puis-je avoir votre nom s'il vous plaît ? »`,
+`« Combien de personnes et combien de nuits ? »` — rather than generic
+filler.
+
+**Combined, there is currently no single provider that can run this screen
+end to end**: Qwen generates well and cannot score, Gemini scores well and
+cannot afford to generate. That is the finding.
+
+### JSON handling
+
+Scoring parses strictly: the text must already be a JSON object. No fence
+stripping, no bracket hunting, no repair. When a provider fails that bar the
+raw output is rendered verbatim on screen with the parse error, because a
+parsing hack would hide exactly the finding this screen exists to produce.
+(Generated *dialogue* is tidied of quote marks and speaker labels before
+display — that is presentation, on a different path from scoring.)
+
+### The French voice
+
+The voice name could not be guessed. Deepgram answers a well-formed but
+unavailable model name with `403 project does not have access`, not `404`,
+so every plausible candidate looked equally real. `/api/live/voices` lists
+what `GET /v1/models` actually sells this project: exactly two French
+Aura-2 voices, `aura-2-agathe-fr` and `aura-2-hector-fr`. Both return real
+audio in ~2.2–2.4 s. Default is agathe.
+
+### Not yet tested
+
+The five turns were driven with synthesised French student audio rather than
+a real microphone, because this environment has no microphone. Recording
+capture on this screen uses the same `MediaRecorder` path already confirmed
+working on `/roleplay-spike`, but the live screen's own record-and-advance
+loop has not been exercised by a human voice. The mood shift to
+`légèrement pressé` did fire correctly on Qwen at turn 3, from the intent
+check reading real audio.
