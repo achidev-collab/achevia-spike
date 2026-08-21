@@ -7,6 +7,8 @@ export interface LatencyRow {
   label: string;
   /** Milliseconds, or null when the step has not run. */
   ms: number | null;
+  /** Shown instead of a duration for rows that are not a duration. */
+  value?: string;
   note?: string;
   emphasis?: boolean;
 }
@@ -44,7 +46,10 @@ export function LatencyPanel({
                 font: row.emphasis
                   ? `600 14px ${font.body}`
                   : `400 14px ${font.body}`,
-                color: row.ms === null ? ink.disabled : ink.heading,
+                color:
+                  row.ms === null && row.value === undefined
+                    ? ink.disabled
+                    : ink.heading,
               }}
             >
               {row.label}
@@ -53,12 +58,15 @@ export function LatencyPanel({
             <span
               style={{
                 font: `600 15px ${font.display}`,
-                color: row.ms === null ? ink.disabled : ink.heading,
+                color:
+                  row.ms === null && row.value === undefined
+                    ? ink.disabled
+                    : ink.heading,
                 minWidth: 92,
                 textAlign: 'right',
               }}
             >
-              {row.ms === null ? 'Not run' : formatMs(row.ms)}
+              {row.value ?? (row.ms === null ? 'Not run' : formatMs(row.ms))}
             </span>
           </div>
         ))}

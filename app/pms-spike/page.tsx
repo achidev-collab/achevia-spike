@@ -103,7 +103,8 @@ export default function PmsSpikePage() {
       {
         label: 'Replays requested',
         ms: null,
-        note: `${guest.replays} · unlimited, costs time only`,
+        value: String(guest.replays),
+        note: 'unlimited, costs visible time only',
       },
     ],
     [guest.replays, guest.ttsMs],
