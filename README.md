@@ -9,6 +9,8 @@ root path is deliberately not built. Go straight to:
 
 - `/roleplay-spike`
 - `/pms-spike`
+- `/roleplay-multiturn-spike` — a follow-on timing rig, see
+  [below](#multi-turn-timing-spike-roleplay-multiturn-spike)
 
 ## Which calls hit what
 
@@ -219,3 +221,65 @@ than it did on typed text earlier in testing (~5 s on a similar-length
 reply). Qwen's audio and text timings stayed close (3.28 s vs ~2.7 s). If
 Gemini stays in the mix for a 5-guest simulation, its audio-scoring latency
 is the number to budget against, not its text latency.
+
+## Multi-turn timing spike (`/roleplay-multiturn-spike`)
+
+A follow-on to the question the two screens above were built to answer: how
+much wall-clock latency does a *multi-turn* guest exchange add per guest,
+ahead of committing to a real scripted-branch build for the 5-guest
+simulation. Not part of the original two-screen deliverable — added after
+those were confirmed working, to size the next piece of work before it gets
+built.
+
+**Scope, deliberately narrow:**
+- **Placeholder guest content only.** The scenario brief supplied exactly one
+  guest line, nothing for a second or third turn. Inventing "real" Achevia
+  dialogue for this would break the same content rule that governs the other
+  two screens, so `lib/multiturnSpikeContent.ts` holds three visibly-labeled
+  placeholder lines, and the screen banners this outright. Not scored
+  against any real rubric — the final score call runs on the real system
+  prompt from the actual walk-in scenario, so a placeholder reply like
+  "Check-in is at three PM" correctly comes back `Poor` (it doesn't answer
+  the real guest's question). That's expected: the score's *content* is
+  meaningless here, only the score call's *latency* is the point.
+- **Fixed sequence, not branching.** The guest's next line never depends on
+  what the student says. Isolates pure turn-loop cost (TTS → record → upload
+  → repeat) from the extra cost a real branch-classification step would add.
+- **New, isolated routes only** — `/api/spike-multiturn/tts` and
+  `/api/spike-multiturn/turn`. The two production screens and `/api/tts` /
+  `/api/score` are untouched.
+
+**A real bug found and fixed during live testing:** the final-score button
+originally sent turn 3's reply under the `audio` form field even when it had
+been typed, not spoken — a `text/plain` Blob dressed up as an audio file.
+Qwen correctly rejected it: `HTTP 400
+InternalError.Algo.InvalidParameter: The audio is empty`. Gemini, worse,
+silently tolerated the garbage bytes and returned a coherent-looking score
+anyway. Fixed by tracking whether the last turn was audio or text and
+sending the matching field — the same discipline the two production screens
+already follow.
+
+**Clean per-guest latency**, from direct API calls (not the in-browser
+click-through, which carries manual-testing overhead):
+
+| Step | Time |
+| --- | --- |
+| 3× guest TTS (placeholder lines) | 4.03 s |
+| 3× reply upload (typed, real network round trip) | 0.69 s |
+| Final score — Qwen | 2.44 s |
+| Final score — Gemini | 5.32 s |
+| **Per guest, Qwen path** | **7.16 s** |
+| **Per guest, Gemini path** | **10.04 s** |
+
+**The actual finding:** projected across 5 guests, pure API latency is
+**~36 s on Qwen, ~50 s on Gemini** — nowhere near the bottleneck for a timed
+simulation. The 5-guest simulation's time budget will be dominated by how
+long a student actually takes to think, speak or type each of the 15 turns
+(3 turns × 5 guests), not by the API pipeline. That's a materially different
+risk than the one this spike set out to check — worth knowing before scoping
+further build work around latency that isn't actually the constraint.
+
+Not yet tested: the same sequence with real recorded audio for all three
+turns (this run used the typed fallback throughout), and the true
+branch-classification variant, which adds one model call per turn and would
+change this math.
