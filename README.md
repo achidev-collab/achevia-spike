@@ -154,6 +154,39 @@ Microphone access needs HTTPS or `localhost`.
 
 ## Errors and rate limits encountered during testing
 
-Not yet run. This build has not been executed against the live APIs — see the
-handover notes accompanying it. Fill this section in on the first real run:
-which provider, which HTTP status, and what the on-screen message said.
+Tested live against the deployed Vercel environment on 2026-08-21, hitting
+`/api/tts` and `/api/score` directly (text fallback, no microphone).
+
+**Deepgram TTS — working.**
+- Guest opening line (`/roleplay-spike`): 200, ~2.5 s, returned a real
+  `audio/mpeg` clip (~29 KB).
+- Spoken-information script (`/pms-spike`, the longer line spelling out the
+  name, phone and email): 200, ~13 s, ~169 KB. This is the slowest call in
+  either pipeline — worth watching once this becomes a 5-guest simulation,
+  since five of these back to back is over a minute of TTS alone.
+
+**Gemini scoring — working, after one fix.**
+- First run failed: HTTP 404, `"This model models/gemini-2.5-flash is no
+  longer available to new users. Please update your code to use
+  models/gemini-3.6-flash for the latest features and improvements."` The
+  default model name in `lib/scoring/gemini.ts` was stale. Updated the
+  default to `gemini-3.6-flash` and redeployed.
+- After the fix: HTTP 200 in ~6.8 s model time on a short typed reply,
+  correct JSON shape, sensible `Best` band with an accurately cited moment
+  and a specific, non-generic improvement note. No free-tier limit hit.
+
+**Qwen scoring — blocked on the key, not the code.**
+- Every attempt returns HTTP 401 from Alibaba Cloud Model Studio:
+  `"Incorrect API key provided."` This is the exact failure mode the spike
+  is meant to surface — no fallback, no mock score, the provider name and
+  reason shown on screen. The `DASHSCOPE_API_KEY` value in Vercel needs to
+  be regenerated or re-checked against the Model Studio console
+  (international endpoint, `https://dashscope-intl.aliyuncs.com`) before
+  the Qwen side of the comparison can be judged.
+- Not yet reached: whether Qwen's free tier is sufficient for a 5-guest
+  simulation, since no request has authenticated yet.
+
+**Not yet tested:** the microphone-based path end to end (recording capture,
+upload, and scoring on real audio rather than the typed fallback), and the
+two-provider side-by-side comparison on `/roleplay-spike` with a working
+Qwen key.
