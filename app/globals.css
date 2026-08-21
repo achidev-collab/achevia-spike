@@ -1,0 +1,59 @@
+/* Values transcribed from `Achevia Metallic Study.dc.html`. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  color: #1b3030;
+  background: #e7e1d6;
+  -webkit-font-smoothing: antialiased;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  margin: 0;
+  background: none;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(27, 48, 48, 0.32);
+}
+
+@keyframes achRecordPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
