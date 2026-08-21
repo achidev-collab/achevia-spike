@@ -49,6 +49,15 @@ interface TurnResult {
   kind: 'audio' | 'text';
 }
 
+/**
+ * What the final score call sends for turn 3's reply — audio and text are
+ * mutually exclusive, matching what /api/score actually accepts. Sending a
+ * typed reply under the "audio" field is invalid input, not a fallback.
+ */
+type LastReply =
+  | { kind: 'audio'; blob: Blob; type: string }
+  | { kind: 'text'; text: string };
+
 interface FinalRun {
   provider: ProviderId;
   providerLabel: string;
@@ -62,7 +71,7 @@ interface FinalRun {
 export default function RoleplayMultiturnSpikePage() {
   const [turnIndex, setTurnIndex] = useState(0);
   const [turnResults, setTurnResults] = useState<TurnResult[]>([]);
-  const [lastAudio, setLastAudio] = useState<{ blob: Blob; type: string } | null>(null);
+  const [lastReply, setLastReply] = useState<LastReply | null>(null);
 
   const [startedAt] = useState(() => performance.now());
   const [stopwatch, setStopwatch] = useState(0);
@@ -119,9 +128,9 @@ export default function RoleplayMultiturnSpikePage() {
             turn={turn}
             turnNumber={turn.turnNumber}
             totalTurns={SPIKE_TURNS.length}
-            onComplete={(result, audio) => {
+            onComplete={(result, reply) => {
               setTurnResults((prev) => [...prev, result]);
-              setLastAudio(audio);
+              setLastReply(reply);
               setTurnIndex((prev) => prev + 1);
             }}
           />
@@ -168,9 +177,9 @@ export default function RoleplayMultiturnSpikePage() {
           </div>
           <button
             type="button"
-            disabled={selected.length === 0 || isScoring || !lastAudio || finished}
+            disabled={selected.length === 0 || isScoring || !lastReply || finished}
             onClick={async () => {
-              if (!lastAudio) return;
+              if (!lastReply) return;
               setIsScoring(true);
               setFinalRuns([]);
               setFinalErrors([]);
@@ -179,7 +188,11 @@ export default function RoleplayMultiturnSpikePage() {
                 selected.map(async (provider) => {
                   const body = new FormData();
                   body.set('provider', provider);
-                  body.set('audio', lastAudio.blob, `turn3.${extensionFor(lastAudio.type)}`);
+                  if (lastReply.kind === 'audio') {
+                    body.set('audio', lastReply.blob, `turn3.${extensionFor(lastReply.type)}`);
+                  } else {
+                    body.set('text', lastReply.text);
+                  }
                   const t0 = performance.now();
                   try {
                     const response = await fetch('/api/score', { method: 'POST', body });
@@ -348,7 +361,7 @@ function ActiveTurn({
   turn: (typeof SPIKE_TURNS)[number];
   turnNumber: number;
   totalTurns: number;
-  onComplete: (result: TurnResult, audio: { blob: Blob; type: string }) => void;
+  onComplete: (result: TurnResult, reply: LastReply) => void;
 }) {
   const [ttsStatus, setTtsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [ttsError, setTtsError] = useState<string | null>(null);
@@ -500,7 +513,9 @@ function ActiveTurn({
           bytes: payload.bytes ?? 0,
           kind: mode === 'speak' ? 'audio' : 'text',
         },
-        mode === 'speak' && clip ? { blob: clip.blob, type: clip.type } : { blob: new Blob([typed], { type: 'text/plain' }), type: 'text/plain' },
+        mode === 'speak' && clip
+          ? { kind: 'audio', blob: clip.blob, type: clip.type }
+          : { kind: 'text', text: typed.trim() },
       );
     } catch (cause) {
       setMicError(`The turn could not be submitted: ${(cause as Error).message}`);
